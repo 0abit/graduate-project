@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinh Học 12 AI Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Thư viện marked.js để render markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-dna"></i>
+                <span>BioAI 12</span>
+            </div>
+            <div class="new-chat">
+                <button id="newChatBtn">
+                    <i class="fa-solid fa-plus"></i> Cuộc trò chuyện mới
+                </button>
+            </div>
+            
+            <div class="chat-history-list" id="chatHistoryList" style="flex: 1; overflow-y: auto; margin-top: 1rem;">
+                <!-- Danh sách lịch sử chat sẽ được render ở đây -->
+            </div>
+
+            <div class="info-panel" style="margin-top: auto; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                <div id="userInfo" style="display: flex; align-items: center; margin-bottom: 0.5rem; color: #ececf1; font-size: 0.9rem;">
+                    <i class="fa-solid fa-circle-user" style="margin-right: 0.5rem; font-size: 1.2rem;"></i>
+                    <span id="userEmail" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Đang tải...</span>
+                </div>
+                <button id="logoutBtn" style="width: 100%; background: transparent; border: 1px solid var(--border-color); color: #ececf1; padding: 0.5rem; border-radius: 6px; cursor: pointer;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-area">
+            <header class="chat-header">
+                <h2>Sinh Học 12 Assistant</h2>
+                <div class="status">
+                    <span class="status-dot"></span> Đang hoạt động
+                </div>
+            </header>
+
+            <div class="chat-messages" id="chatMessages">
+                <!-- Welcome Message -->
+                <div class="message bot-message">
+                    <div class="avatar"><i class="fa-solid fa-robot"></i></div>
+                    <div class="message-content">
+                        <p>Xin chào! Tôi là trợ lý AI chuyên về môn Sinh học lớp 12. Tôi có thể giúp bạn tìm kiếm thông tin, giải thích các khái niệm, cơ chế hay quá trình sinh học dựa trên kiến thức trong SGK. Bạn cần hỏi gì nào?</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <form id="chatForm">
+                    <textarea id="userInput" placeholder="Hỏi tôi bất cứ điều gì về Sinh học 12..." rows="1" autofocus></textarea>
+                    <button type="submit" id="sendBtn" disabled>
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+                <div class="footer-text">
+                    Nội dung được tạo bởi AI và dựa trên sách giáo khoa. Hãy luôn kiểm tra lại kiến thức.
+                </div>
+            </div>
+        </main>
+        
+        <!-- Nguồn tham khảo Modal -->
+        <div id="sourceModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h3>Nguồn tham khảo</h3>
+                <div id="sourceDetails"></div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="/static/app.js"></script>
+        <!-- Khung chứa ảnh phóng to -->
+    <div id="imageLightbox" class="image-lightbox" onclick="this.style.display='none'">
+        <img id="lightboxImg" src="">
+    </div>
+</body>
+</html>

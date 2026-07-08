@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - BioChat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #10a37f;
+            --danger-color: #ef4444;
+            --bg-color: #343541;
+            --panel-bg: #444654;
+            --text-color: #ececf1;
+            --border-color: #565869;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .container {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="text"] {
+            padding: 0.75rem 1rem;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: white;
+            width: 300px;
+            font-size: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--panel-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .badge.admin { background: #3b82f6; color: white; }
+        .badge.user { background: #6b7280; color: white; }
+        .badge.active { background: #10b981; color: white; }
+        .badge.banned { background: var(--danger-color); color: white; }
+
+        .action-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover { background: rgba(255,255,255,0.1); }
+        .btn-danger:hover { background: var(--danger-color); border-color: var(--danger-color); }
+        .btn-primary:hover { background: var(--primary-color); border-color: var(--primary-color); }
+
+        #logoutBtn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #logoutBtn:hover { background: rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo"><i class="fa-solid fa-dna"></i> BioChat Admin</div>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span id="adminEmail">Loading...</span>
+            <button id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>Quản lý Người dùng</h2>
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Tìm kiếm theo Email...">
+            <button class="action-btn btn-primary" id="refreshBtn"><i class="fa-solid fa-rotate-right"></i> Làm mới</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+                <tr><td colspan="4" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal hiển thị Link Reset Password -->
+    <div id="resetModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center;">
+        <div style="background: var(--panel-bg); padding: 2rem; border-radius: 8px; max-width: 500px; width: 100%;">
+            <h3 style="margin-top: 0;">Link Khôi phục mật khẩu</h3>
+            <p>Vui lòng copy gửi link sau cho người dùng:</p>
+            <input type="text" id="resetLinkInput" readonly style="width: 100%; padding: 0.5rem; background: #343541; color: white; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem;">
+            <div style="text-align: right;">
+                <button class="action-btn btn-primary" onclick="document.getElementById('resetModal').style.display='none'">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/admin.js"></script>
+</body>
+</html>

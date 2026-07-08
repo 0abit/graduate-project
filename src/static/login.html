@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - RAG Chatbot Sinh Học 12</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #10a37f;
+            --primary-hover: #0e906f;
+            --bg-color: #343541;
+            --text-color: #ececf1;
+            --border-color: #565869;
+            --panel-bg: #444654;
+            --error-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .login-container {
+            background-color: var(--panel-bg);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #c5c5d2;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: #40414f;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 1rem;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            margin-bottom: 0;
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            min-height: 20px;
+        }
+
+        .toggle-mode {
+            font-size: 0.9rem;
+            color: #c5c5d2;
+            margin-top: 1.5rem;
+        }
+
+        .toggle-mode span {
+            color: var(--primary-color);
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .toggle-mode span:hover {
+            text-decoration: underline;
+        }
+        
+        /* Loading Overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="login-container">
+        <div class="logo">BioChat</div>
+        <div class="subtitle" id="mode-subtitle">Đăng nhập để tiếp tục</div>
+
+        <div class="error-message" id="error-message"></div>
+
+        <form id="auth-form">
+            <div class="input-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="nhap.email@example.com">
+            </div>
+            <div class="input-group" id="password-group">
+                <label for="password">Mật khẩu</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            
+            <button type="submit" class="btn" id="submit-btn">Đăng nhập</button>
+        </form>
+
+        <div class="toggle-mode" id="toggle-mode">
+            Chưa có tài khoản? <span onclick="toggleMode()">Đăng ký ngay</span><br>
+            Quên mật khẩu? <span onclick="forgotPasswordMode()">Khôi phục ngay</span>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Modular version) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+        // Firebase Config from User
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4iEMkXq3gJljeyF4wmF8UYAaqzDltSEA",
+            authDomain: "gen-lang-client-0781062109.firebaseapp.com",
+            projectId: "gen-lang-client-0781062109",
+            storageBucket: "gen-lang-client-0781062109.firebasestorage.app",
+            messagingSenderId: "638445321934",
+            appId: "1:638445321934:web:43a5c267d4b67f37ab1a9f",
+            measurementId: "G-SCYRJNF96C"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Global variables
+        let isLoginMode = true;
+        let isForgotMode = false;
+        const form = document.getElementById('auth-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const passwordGroup = document.getElementById('password-group');
+        const submitBtn = document.getElementById('submit-btn');
+        const errorMsg = document.getElementById('error-message');
+        const modeSubtitle = document.getElementById('mode-subtitle');
+        const toggleModeDiv = document.getElementById('toggle-mode');
+        const loading = document.getElementById('loading-overlay');
+
+        // If user is already logged in, redirect to chat or admin
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const token = await user.getIdToken();
+                    const res = await fetch('/auth/me', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.role === 'admin') {
+                            window.location.href = "/static/admin.html";
+                        } else {
+                            window.location.href = "/";
+                        }
+                    } else {
+                        window.location.href = "/";
+                    }
+                } catch (error) {
+                    window.location.href = "/";
+                }
+            }
+        });
+
+        // Toggle UI Mode
+        window.toggleMode = () => {
+            isLoginMode = !isLoginMode;
+            isForgotMode = false;
+            passwordGroup.style.display = "block";
+            passwordInput.required = true;
+            errorMsg.innerText = "";
+            errorMsg.style.color = "var(--error-color)";
+            emailInput.value = "";
+            passwordInput.value = "";
+            
+            if (isLoginMode) {
+                modeSubtitle.innerText = "Đăng nhập để tiếp tục";
+                submitBtn.innerText = "Đăng nhập";
+                toggleModeDiv.innerHTML = `Chưa có tài khoản? <span onclick="toggleMode()">Đăng ký ngay</span><br>Quên mật khẩu? <span onclick="forgotPasswordMode()">Khôi phục ngay</span>`;
+            } else {
+                modeSubtitle.innerText = "Tạo tài khoản mới";
+                submitBtn.innerText = "Đăng ký";
+                toggleModeDiv.innerHTML = `Đã có tài khoản? <span onclick="toggleMode()">Đăng nhập</span>`;
+            }
+        };
+
+        window.forgotPasswordMode = () => {
+            isForgotMode = true;
+            passwordGroup.style.display = "none";
+            passwordInput.required = false;
+            errorMsg.innerText = "";
+            errorMsg.style.color = "var(--error-color)";
+            modeSubtitle.innerText = "Khôi phục mật khẩu";
+            submitBtn.innerText = "Gửi link khôi phục";
+            toggleModeDiv.innerHTML = `Nhớ mật khẩu rồi? <span onclick="toggleMode()">Đăng nhập</span>`;
+        };
+
+        // Handle Submit
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMsg.innerText = "";
+            loading.style.display = "flex";
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            try {
+                if (isForgotMode) {
+                    await sendPasswordResetEmail(auth, email);
+                    loading.style.display = "none";
+                    errorMsg.style.color = "#10a37f"; // Màu xanh báo thành công
+                    errorMsg.innerText = "Link khôi phục đã được gửi! Vui lòng kiểm tra hộp thư (và mục Spam) của bạn.";
+                    return;
+                } else if (isLoginMode) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                }
+                // Redirect will be handled by onAuthStateChanged
+            } catch (error) {
+                loading.style.display = "none";
+                errorMsg.style.color = "var(--error-color)";
+                let msg = "Đã có lỗi xảy ra.";
+                if (error.code === 'auth/invalid-credential') msg = "Sai email hoặc mật khẩu.";
+                if (error.code === 'auth/email-already-in-use') msg = "Email này đã được sử dụng.";
+                if (error.code === 'auth/weak-password') msg = "Mật khẩu phải có ít nhất 6 ký tự.";
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') msg = "Email không hợp lệ hoặc không tồn tại.";
+                errorMsg.innerText = msg;
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+TOC_MAPPING = {
+    "Bai_1": {"pdf_start": 7, "pdf_end": 10, "title": "DNA và cơ chế tái bản DNA"},
+    "Bai_2": {"pdf_start": 11, "pdf_end": 19, "title": "Gene, quá trình truyền đạt thông tin di truyền và hệ gene"},
+    "Bai_3": {"pdf_start": 20, "pdf_end": 24, "title": "Điều hoà biểu hiện gene"},
+    "Bai_4": {"pdf_start": 25, "pdf_end": 28, "title": "Đột biến gene"},
+    "Bai_5": {"pdf_start": 29, "pdf_end": 33, "title": "Công nghệ di truyền"},
+    "Bai_6": {"pdf_start": 34, "pdf_end": 36, "title": "Thực hành: Tách chiết DNA"},
+    "Chuong_1_OnTap": {"pdf_start": 37, "pdf_end": 37, "title": "Sơ đồ tóm tắt kiến thức Chương 1"},
+
+    "Bai_7": {"pdf_start": 38, "pdf_end": 41, "title": "Cấu trúc và chức năng của nhiễm sắc thể"},
+    "Bai_8": {"pdf_start": 42, "pdf_end": 47, "title": "Học thuyết di truyền của Mendel"},
+    "Bai_9": {"pdf_start": 48, "pdf_end": 51, "title": "Mở rộng học thuyết Mendel"},
+    "Bai_10": {"pdf_start": 52, "pdf_end": 55, "title": "Di truyền giới tính và di truyền liên kết với giới tính"},
+    "Bai_11": {"pdf_start": 56, "pdf_end": 61, "title": "Liên kết gene và hoán vị gene"},
+    "Bai_12": {"pdf_start": 62, "pdf_end": 69, "title": "Đột biến nhiễm sắc thể"},
+    "Bai_13": {"pdf_start": 70, "pdf_end": 76, "title": "Di truyền học người và di truyền y học"},
+    "Bai_14": {"pdf_start": 77, "pdf_end": 78, "title": "Thực hành: Quan sát một số dạng đột biến nhiễm sắc thể"},
+    "Chuong_2_OnTap": {"pdf_start": 79, "pdf_end": 79, "title": "Sơ đồ tóm tắt kiến thức Chương 2"},
+
+    "Bai_15": {"pdf_start": 80, "pdf_end": 84, "title": "Di truyền gene ngoài nhân"},
+    "Bai_16": {"pdf_start": 85, "pdf_end": 89, "title": "Tương tác giữa kiểu gene với môi trường và thành tựu chọn giống"},
+    "Bai_17": {"pdf_start": 90, "pdf_end": 91, "title": "Thực hành: Thí nghiệm về thường biến ở cây trồng"},
+    "Chuong_3_OnTap": {"pdf_start": 92, "pdf_end": 92, "title": "Sơ đồ tóm tắt kiến thức Chương 3"},
+
+    "Bai_18": {"pdf_start": 93, "pdf_end": 97, "title": "Di truyền quần thể"},
+    "Chuong_4_OnTap": {"pdf_start": 98, "pdf_end": 98, "title": "Sơ đồ tóm tắt kiến thức Chương 4"},
+
+    "Bai_19": {"pdf_start": 99, "pdf_end": 102, "title": "Các bằng chứng tiến hoá"},
+    "Bai_20": {"pdf_start": 103, "pdf_end": 107, "title": "Quan niệm của Darwin về chọn lọc tự nhiên và hình thành loài"},
+    "Bai_21": {"pdf_start": 108, "pdf_end": 114, "title": "Học thuyết tiến hóa tổng hợp hiện đại"},
+    "Bai_22": {"pdf_start": 115, "pdf_end": 122, "title": "Tiến hóa lớn và quá trình phát sinh chủng loại"},
+    "Chuong_5_OnTap": {"pdf_start": 123, "pdf_end": 123, "title": "Sơ đồ tóm tắt kiến thức Chương 5"},
+
+    "Bai_23": {"pdf_start": 124, "pdf_end": 129, "title": "Môi trường và các nhân tố sinh thái"},
+    "Bai_24": {"pdf_start": 130, "pdf_end": 139, "title": "Sinh thái học quần thể"},
+    "Bai_25": {"pdf_start": 140, "pdf_end": 141, "title": "Thực hành: Xác định khu vực phân bổ, kiểu phân bố cá thể và ước tính kích thước mật độ của quần thể thực vật hoặc động vật ít di chuyển"},
+    "Chuong_6_OnTap": {"pdf_start": 142, "pdf_end": 142, "title": "Sơ đồ tóm tắt kiến thức Chương 6"},
+
+    "Bai_26": {"pdf_start": 143, "pdf_end": 151, "title": "Quần xã sinh vật"},
+    "Bai_27": {"pdf_start": 152, "pdf_end": 153, "title": "Thực hành: Tìm hiểu một số đặc trưng cơ bản của quần xã trong tự nhiên"},
+    "Bai_28": {"pdf_start": 154, "pdf_end": 156, "title": "Hệ sinh thái"},
+    "Bai_29": {"pdf_start": 157, "pdf_end": 162, "title": "Trao đổi vật chất và chuyển hóa năng lượng trong hệ sinh thái"},
+    "Bai_30": {"pdf_start": 163, "pdf_end": 166, "title": "Diễn thể"},
+    "Bai_31": {"pdf_start": 167, "pdf_end": 173, "title": "Sinh quyển, khu sinh học và chu trình sinh - địa - hóa"},
+    "Bai_32": {"pdf_start": 174, "pdf_end": 175, "title": "Thực hành: Thiết kế một hệ sinh thái nhân tạo"},
+    "Chuong_7_OnTap": {"pdf_start": 176, "pdf_end": 176, "title": "Sơ đồ tóm tắt kiến thức Chương 7"},
+
+    "Bai_33": {"pdf_start": 177, "pdf_end": 181, "title": "Sinh thái học phục hồi và bảo tồn đa dạng"},
+    "Bai_34": {"pdf_start": 182, "pdf_end": 189, "title": "Phát triển bền vững"},
+    "Bai_35": {"pdf_start": 190, "pdf_end": 194, "title": "Dự án: Tìm hiểu thực trạng bảo tồn sinh thái tại địa phương và đề xuất giải pháp bảo tồn"},
+    "Chuong_8_OnTap": {"pdf_start": 195, "pdf_end": 195, "title": "Sơ đồ tóm tắt kiến thức Chương 8"},
+    "PhuLuc_ThuatNgu": {"pdf_start": 196, "pdf_end": 197, "title": "Một số thuật ngữ sử dụng trong sách"},
+}

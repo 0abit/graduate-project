@@ -1,0 +1,32 @@
+# 1. Biến môi trường và Bảo mật (TUYỆT ĐỐI KHÔNG ĐƯA LÊN GIT)
+.env
+.env.*
+firebase-adminsdk.json
+*firebase-adminsdk*.json
+
+# 2. Thư mục dữ liệu & Kết quả (Tránh làm nặng Git)
+data/
+outputs/
+src/static/extracted_images/
+
+# 3. Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# 4. Môi trường ảo (Virtual Environments)
+venv/
+env/
+.venv/
+env.bak/
+v/
+
+# 5. Cấu hình IDE (VS Code, PyCharm)
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 6. Log files
+*.log
