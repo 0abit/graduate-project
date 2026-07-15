@@ -68,8 +68,12 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     try:
         # Cho phép sai số đồng hồ giữa máy tính và máy chủ Google là 10 giây
-        decoded_token = auth.verify_id_token(token, clock_skew_seconds=10)
+        decoded_token = auth.verify_id_token(token, clock_skew_seconds=10, check_revoked=True)
         return decoded_token
+    except auth.RevokedIdTokenError:
+        raise HTTPException(status_code=401, detail="TOKEN_REVOKED")
+    except auth.UserDisabledError:
+        raise HTTPException(status_code=401, detail="USER_DISABLED")
     except Exception as e:
         print(f"Firebase Auth Error: {e}")
         raise HTTPException(status_code=401, detail=f"Invalid authentication credentials: {e}")
@@ -158,9 +162,21 @@ TRẢ LỜI:
 def serve_frontend():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
+import time
+user_last_request = {}
+COOLDOWN_SECONDS = 5
+
 @app.post("/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest, decoded_token: dict = Depends(verify_token)):
     user_id = decoded_token['uid']
+    
+    current_time = time.time()
+    if user_id in user_last_request:
+        time_since_last = current_time - user_last_request[user_id]
+        if time_since_last < COOLDOWN_SECONDS:
+            raise HTTPException(status_code=429, detail=f"Vui lòng đợi {int(COOLDOWN_SECONDS - time_since_last)} giây trước khi gửi câu hỏi tiếp theo.")
+    user_last_request[user_id] = current_time
+
     try:
         query_embedding = embed_query(request.query)
         context_records = retrieve_context(query_embedding, top_k=3)

@@ -19,3 +19,7 @@ uvicorn
 firebase-admin
 pymongo
 motor
+ragas
+datasets
+pandas
+langchain-google-genai

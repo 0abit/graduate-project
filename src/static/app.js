@@ -325,7 +325,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) {
+            if (response.status === 401) {
+                const errorData = await response.json();
+                if (errorData.detail === "TOKEN_REVOKED" || errorData.detail === "USER_DISABLED" || errorData.detail.includes("Invalid")) {
+                    alert("Tài khoản của bạn đã bị khóa hoặc phiên đăng nhập hết hạn. Bạn sẽ bị đăng xuất.");
+                    await signOut(auth);
+                    window.location.href = "/static/login.html";
+                    return;
+                }
+            } else if (response.status === 429) {
+                const errorData = await response.json();
+                alert(errorData.detail);
+                throw new Error("Spam detected");
+            } else if (!response.ok) {
                 throw new Error('Lỗi từ server');
             }
 
