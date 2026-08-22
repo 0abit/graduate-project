@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             html += `
                 <div class="source-item">
-                    <h6 class="text-primary mb-2">${sourceTitle} (Score: ${(src.score * 100).toFixed(1)}%)</h6>
+                    <h6 class="text-primary mb-2">${sourceTitle}</h6>
                     <div class="text-light-50 mb-0 source-markdown-content" style="font-size: 0.9rem;">${markdownContent}</div>
                     ${tagsHtml ? '<div style="margin-top:0.5rem"><strong>Khái niệm:</strong> ' + tagsHtml + '</div>' : ''}
                 </div>

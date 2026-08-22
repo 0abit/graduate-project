@@ -4,7 +4,7 @@ from toc_mappings.sinh_hoc_12 import TOC_MAPPING as SINH_HOC_12_TOC_MAPPING
 
 load_dotenv()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(BASE_DIR, "data"))
 PDF_DIR = os.getenv("PDF_DIR", os.path.join(DATA_DIR, "raw_data"))
 MD_DIR = os.getenv("MD_DIR", os.path.join(DATA_DIR, "processed_md"))

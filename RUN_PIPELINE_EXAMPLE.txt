@@ -1,0 +1,105 @@
+Huong dan chay pipeline
+=======================
+
+Tat ca lenh duoi day chay tai thu muc goc du an.
+Nen kich hoat virtual environment truoc:
+
+.\.venv\Scripts\activate
+
+1. Kiem tra truoc khi chay
+--------------------------
+Can co:
+
+- .env da duoc tao tu .env.example.
+- data/raw_data/sinh_hoc_12.pdf neu CURRENT_BOOK=sinh_hoc_12.
+- MongoDB dang truy cap duoc qua MONGO_URI.
+- Neo4j dang truy cap duoc qua NEO4J_URI, NEO4J_USER, NEO4J_PASS.
+- GEMINI_KEYS co it nhat 1 key.
+
+2. Chay tung phase
+------------------
+Phase 1 - OCR PDF scan thanh Markdown:
+
+python src/phase1.py
+
+Phase 2 - Cat Markdown thanh chunks va luu vao MongoDB:
+
+python src/phase2.py
+
+Phase 3 - Goi Gemini de trich xuat entity/relationship dang JSON:
+
+python src/phase3.py
+
+Phase 4 - Nap chunks va extracted entities vao Neo4j:
+
+python src/phase4.py
+
+Phase 5 - Tao embedding cho PhanDoanV2 va tao Vector Index:
+
+python src/phase5_embedding.py
+
+3. Chay web chatbot
+-------------------
+Dat firebase-adminsdk.json o thu muc goc neu can dang nhap Firebase.
+Sau do chay:
+
+python src/api.py
+
+Mac dinh server chay tai:
+
+http://localhost:8000
+
+Giao dien tinh nam trong:
+
+src/static/login.html
+src/static/index.html
+src/static/admin.html
+
+4. Chay danh gia Ragas
+----------------------
+Can co file:
+
+data/Test_Dataset_Sinh12.csv
+
+Sau do chay:
+
+python src/evaluate_rag.py
+
+Script se doc 50 cau hoi dau tien, goi lai pipeline truy van, sinh answer, cham bang Ragas va ghi ket qua ra data/.
+Vi moi cau co the ton nhieu API call, khong nen tang worker tren Free Tier neu chua tinh quota.
+
+5. Dung pipeline an toan
+------------------------
+Mot so phase co co che STOP_FILE. De yeu cau dung an toan, tao file:
+
+data/STOP_PIPELINE
+
+Tren PowerShell:
+
+New-Item data\STOP_PIPELINE -ItemType File
+
+Sau khi phase da dung, xoa file nay truoc khi chay lai:
+
+Remove-Item data\STOP_PIPELINE
+
+6. Thu tu chay lai khi bi loi
+-----------------------------
+Neu Phase 1 loi giua chung:
+
+- Sua loi OCR/PDF.
+- Xoa data/STOP_PIPELINE neu co.
+- Chay lai python src/phase1.py.
+
+Neu Phase 3 bi 429:
+
+- Giu nguyen MongoDB.
+- Cho quota hoi lai hoac them key vao GEMINI_KEYS.
+- Chay lai python src/phase3.py.
+
+Neu Phase 5 bi 429:
+
+- Giu nguyen Neo4j.
+- Cho quota hoi lai.
+- Chay lai python src/phase5_embedding.py.
+
+Pipeline co checkpoint va trang thai trong MongoDB/Neo4j, nen khong can xoa toan bo du lieu neu chi bi loi quota.

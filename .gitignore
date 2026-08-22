@@ -1,32 +1,93 @@
-# 1. Biến môi trường và Bảo mật (TUYỆT ĐỐI KHÔNG ĐƯA LÊN GIT)
+# ============================================================
+# Secrets and local credentials
+# ============================================================
 .env
 .env.*
+!.env.example
+!.env.template
+
 firebase-adminsdk.json
 *firebase-adminsdk*.json
+*serviceAccount*.json
+*service-account*.json
+credentials*.json
+google-credentials*.json
+gen-lang-client-*.json
 
-# 2. Thư mục dữ liệu & Kết quả (Tránh làm nặng Git)
-data/
-outputs/
-src/static/extracted_images/
-
-# 3. Python Cache
+# ============================================================
+# Python runtime, cache, and local environments
+# ============================================================
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
 
-# 4. Môi trường ảo (Virtual Environments)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
 venv/
 env/
 .venv/
 env.bak/
 v/
 
-# 5. Cấu hình IDE (VS Code, PyCharm)
+# ============================================================
+# Generated data, OCR outputs, checkpoints, and evaluation files
+# ============================================================
+data/
+!data/.gitkeep
+!data/README.md
+!data/*sample*.csv
+
+outputs/
+src/static/extracted_images/
+
+*.checkpoint
+*.ckpt
+*.pt
+*.pth
+*.onnx
+
+# ============================================================
+# Local reports, thesis drafts, rendered pages, and scratch work
+# ============================================================
+reports/
+tmp/
+viết báo cáo/
+
+*.doc
+*.docx
+*.pdf
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+
+# ============================================================
+# Backups, logs, and temporary files
+# ============================================================
+*_backup.py
+*_backup.*
+*.bak
+*.tmp
+*.temp
+*.log
+
+# ============================================================
+# Local databases
+# ============================================================
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================================
+# IDE, OS, and editor files
+# ============================================================
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# 6. Log files
-*.log
+.DS_Store
+Thumbs.db

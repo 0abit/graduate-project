@@ -1,0 +1,84 @@
+Huong dan setup source code
+===========================
+
+Muc dich
+--------
+File nay huong dan nguoi khac clone source va chuan bi moi truong chay he thong GraphRAG Sinh hoc 12.
+Khong dua secret that vao GitHub. Cac file nhu .env, firebase-adminsdk.json, data/, reports/ va tmp/ da duoc dua vao .gitignore.
+
+1. Tao moi truong Python
+------------------------
+Chay tai thu muc goc cua du an:
+
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+
+Neu dung Linux/macOS:
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+2. Tao file .env
+----------------
+Copy file mau:
+
+copy .env.example .env
+
+Sau do dien gia tri that vao .env:
+
+- MONGO_URI: chuoi ket noi MongoDB local hoac MongoDB Atlas.
+- NEO4J_URI, NEO4J_USER, NEO4J_PASS: thong tin Neo4j/AuraDB.
+- GEMINI_KEYS: danh sach Gemini API keys, ngan cach bang dau phay.
+- COHERE_API_KEY: dung cho Cohere Rerank. Neu bo trong, API se fallback ve ket qua RRF.
+- CLOUDINARY_URL: dung khi muon upload anh SGK len Cloudinary. Neu bo trong, khong upload anh len Cloudinary.
+- SUPER_ADMIN_EMAIL: email tai khoan admin.
+
+Tuyet doi khong commit .env.
+
+3. Firebase Admin SDK
+---------------------
+Neu chay web chatbot co dang nhap Firebase, can dat file service account tai:
+
+firebase-adminsdk.json
+
+File nay nam o thu muc goc du an. File nay da bi .gitignore chan, khong duoc commit.
+Nguoi moi dung source phai tu tao service account rieng tren Firebase Console.
+
+4. Dich vu can chuan bi
+-----------------------
+- MongoDB: luu chunks, metadata, chat history.
+- Neo4j hoac Neo4j AuraDB: luu Knowledge Graph va Vector Index.
+- Gemini API: trich xuat JSON, tao embedding, sinh cau tra loi.
+- Cohere API: rerank ket qua truy van. Co the bo qua neu chi muon chay RRF.
+- Cloudinary: luu anh SGK. Khong bat buoc neu chi test text pipeline.
+
+5. Luu y ve may cau hinh thap
+----------------------------
+Du an ban dau chay tren GTX 1050, VRAM thap. Cau hinh mau trong .env.example de OCR chay CPU:
+
+PADDLE_DEVICE=cpu
+VIETOCR_DEVICE=cpu
+
+Cach nay cham hon, nhung it bi dung giua chung khi xu ly PDF scan nhieu trang.
+
+6. Bao mat truoc khi public repo
+--------------------------------
+Truoc khi commit:
+
+git status
+
+Can dam bao khong co cac file sau trong staged files:
+
+.env
+firebase-adminsdk.json
+data/
+reports/
+tmp/
+viet bao cao/
+*.docx
+*.xlsx
+*.pdf
+
+Neu tung chup anh man hinh co hien .env, nen rotate lai MongoDB password, Neo4j password, Gemini keys, Cohere key va Cloudinary secret.

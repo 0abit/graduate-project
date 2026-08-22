@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import cohere
 from neo4j import GraphDatabase
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -22,7 +23,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import config
+from src import config
 
 # Initialize Firebase Admin
 cred_path = os.path.join(PROJECT_ROOT, "firebase-adminsdk.json")
@@ -109,21 +110,170 @@ def embed_query(query: str) -> List[float]:
     )
     return response['embedding']
 
-def retrieve_context(query_embedding: List[float], top_k: int = 3) -> List[dict]:
-    query = """
+import re as regex_module
+
+def vector_search(query_embedding: List[float], top_k: int = 5) -> List[dict]:
+    """Tìm kiếm bằng Vector (Cosine Similarity) - Hiểu ngữ nghĩa."""
+    cypher = """
     CALL db.index.vector.queryNodes('PhanDoanV2_embedding', $top_k, $query_embedding)
     YIELD node, score
     MATCH (b:BaiHocV2)-[:CO_PHAN_DOAN]->(node)
     OPTIONAL MATCH (node)-[:DINH_NGHIA]->(kn:KhaiNiemV2)
     RETURN b.ten_hien_thi as bai_hoc, node.noi_dung as noi_dung, score,
-           node.muc as tieu_muc, node.source_pages as trang,
+           node.tieu_muc as tieu_muc, node.source_pages as trang,
+           node.ma_phan_doan as chunk_id,
            collect(DISTINCT kn.ten) as khai_niem
     ORDER BY score DESC
     """
-    
     with driver.session() as session:
-        result = session.run(query, top_k=top_k, query_embedding=query_embedding)
+        result = session.run(cypher, top_k=top_k, query_embedding=query_embedding)
         return [record.data() for record in result]
+
+def escape_lucene_query(query: str) -> str:
+    """Escape các ký tự đặc biệt của Lucene để tránh lỗi Full-text query."""
+    # Danh sách ký tự đặc biệt của Lucene cần escape
+    lucene_special = ['+', '-', '&', '|', '!', '(', ')', '{', '}',
+                      '[', ']', '^', '"', '~', '*', '?', ':', '\\', '/']
+    result = query
+    for char in lucene_special:
+        result = result.replace(char, '\\' + char)
+    return result
+
+def keyword_search(query: str, top_k: int = 5) -> List[dict]:
+    """Tìm kiếm bằng từ khóa (Full-text/BM25) - Khớp chính xác ký tự."""
+    safe_query = escape_lucene_query(query)
+    cypher = """
+    CALL db.index.fulltext.queryNodes('PhanDoanV2_fulltext', $search_text)
+    YIELD node, score
+    MATCH (b:BaiHocV2)-[:CO_PHAN_DOAN]->(node)
+    OPTIONAL MATCH (node)-[:DINH_NGHIA]->(kn:KhaiNiemV2)
+    RETURN b.ten_hien_thi as bai_hoc, node.noi_dung as noi_dung, score,
+           node.tieu_muc as tieu_muc, node.source_pages as trang,
+           node.ma_phan_doan as chunk_id,
+           collect(DISTINCT kn.ten) as khai_niem
+    ORDER BY score DESC
+    LIMIT $top_k
+    """
+    with driver.session() as session:
+        result = session.run(cypher, search_text=safe_query, top_k=top_k)
+        return [record.data() for record in result]
+
+def reciprocal_rank_fusion(vector_results: List[dict], keyword_results: List[dict], k: int = 60) -> List[dict]:
+    """
+    Thuật toán RRF (Cormack et al., 2009 - Đại học Waterloo).
+    Gộp kết quả từ Vector Search và Keyword Search thành 1 danh sách duy nhất.
+    Công thức: RRF(d) = Σ 1/(k + rank_r(d))
+    """
+    rrf_scores = {}      # chunk_id -> điểm RRF
+    doc_map = {}         # chunk_id -> dữ liệu đầy đủ của tài liệu
+
+    # Chấm điểm RRF cho kết quả từ Vector Search
+    for rank, doc in enumerate(vector_results, start=1):
+        chunk_id = doc.get('chunk_id', doc['noi_dung'][:50])
+        rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0) + 1.0 / (k + rank)
+        doc_map[chunk_id] = doc
+
+    # Chấm điểm RRF cho kết quả từ Keyword Search
+    for rank, doc in enumerate(keyword_results, start=1):
+        chunk_id = doc.get('chunk_id', doc['noi_dung'][:50])
+        rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0) + 1.0 / (k + rank)
+        if chunk_id not in doc_map:
+            doc_map[chunk_id] = doc
+
+    # Sắp xếp theo điểm RRF giảm dần
+    sorted_ids = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
+
+    # Trả về danh sách đã xếp hạng, gán lại score = điểm RRF
+    results = []
+    for chunk_id in sorted_ids:
+        doc = doc_map[chunk_id].copy()
+        doc['score'] = round(rrf_scores[chunk_id], 6)
+        results.append(doc)
+
+    return results
+
+def cohere_rerank(query: str, documents: List[dict], top_n: int = 3) -> List[dict]:
+    """
+    Sử dụng Cohere Rerank API để chấm lại điểm relevance cho các tài liệu.
+    Input: danh sách tài liệu thô từ Hybrid Search.
+    Output: top_n tài liệu được sắp xếp lại theo điểm Cohere.
+    """
+    cohere_api_key = os.getenv("COHERE_API_KEY", "")
+    if not cohere_api_key or not documents:
+        return documents[:top_n]
+    
+    try:
+        co = cohere.ClientV2(api_key=cohere_api_key)
+        
+        # Chuẩn bị nội dung để Cohere chấm điểm
+        doc_texts = [doc['noi_dung'] for doc in documents]
+        
+        response = co.rerank(
+            model="rerank-v3.5",
+            query=query,
+            documents=doc_texts,
+            top_n=top_n
+        )
+        
+        # Sắp xếp lại danh sách theo kết quả Cohere
+        reranked = []
+        MIN_SCORE = 0.05  # Ngưỡng tối thiểu: loại bỏ tài liệu không liên quan
+        for result in response.results:
+            if result.relevance_score < MIN_SCORE:
+                print(f"  [Cohere Rerank] Loại bỏ tài liệu index={result.index} (score={result.relevance_score:.4f} < {MIN_SCORE})")
+                continue
+            doc = documents[result.index].copy()
+            doc['score'] = round(result.relevance_score, 6)
+            reranked.append(doc)
+        
+        # Đảm bảo luôn có ít nhất 1 tài liệu (lấy tài liệu tốt nhất nếu tất cả bị lọc)
+        if not reranked and response.results:
+            best = response.results[0]
+            doc = documents[best.index].copy()
+            doc['score'] = round(best.relevance_score, 6)
+            reranked.append(doc)
+        
+        print(f"  [Cohere Rerank] Reranked {len(documents)} -> {len(reranked)} documents (filtered by MIN_SCORE={MIN_SCORE})")
+        return reranked
+        
+    except Exception as e:
+        print(f"  [Cohere Rerank] Error: {e}. Fallback to RRF ranking.")
+        return documents[:top_n]
+
+def retrieve_context(query_embedding: List[float], top_k: int = 3, query_text: str = "") -> List[dict]:
+    """
+    Hybrid Search + Cohere Rerank:
+    1. Vector Search + Keyword Search
+    2. Gộp bằng RRF
+    3. Lấy Top 10 ứng viên
+    4. Cohere Rerank chấm lại -> Trả về Top K tốt nhất
+    """
+    # Bước 1: Vector Search (lấy dư để có nhiều ứng viên cho Rerank)
+    fetch_k = max(top_k * 3, 10)
+    vector_results = vector_search(query_embedding, top_k=fetch_k)
+
+    # Bước 2: Keyword Search (chỉ chạy nếu có query_text)
+    if query_text.strip():
+        keyword_results = keyword_search(query_text, top_k=fetch_k)
+    else:
+        keyword_results = []
+
+    # Bước 3: Gộp bằng RRF nếu có kết quả từ cả 2 nguồn
+    if keyword_results:
+        fused_results = reciprocal_rank_fusion(vector_results, keyword_results)
+    else:
+        fused_results = vector_results
+
+    # Bước 4: Lấy Top 10 ứng viên từ RRF
+    candidates = fused_results[:10]
+
+    # Bước 5: Cohere Rerank chấm lại điểm, chỉ giữ Top K
+    if query_text.strip():
+        reranked = cohere_rerank(query_text, candidates, top_n=top_k)
+    else:
+        reranked = candidates[:top_k]
+
+    return reranked
 
 def generate_answer(query: str, context_records: List[dict]) -> str:
     if not context_records:
@@ -134,20 +284,31 @@ def generate_answer(query: str, context_records: List[dict]) -> str:
         context_text += f"--- Nguồn {idx} (Bài: {record['bai_hoc']}) ---\n"
         context_text += f"{record['noi_dung']}\n\n"
         
-    prompt = f"""
-Bạn là một trợ lý ảo chuyên môn về Sinh Học lớp 12. Nhiệm vụ của bạn là trả lời câu hỏi của người dùng dựa trên các tài liệu trích xuất từ sách giáo khoa dưới đây.
-Hãy trả lời một cách chính xác, thân thiện, dễ hiểu và CHỈ sử dụng thông tin từ tài liệu được cung cấp. Nếu thông tin không có trong tài liệu, hãy nói rõ là bạn không tìm thấy.
-Không bịa đặt thêm thông tin ngoài tài liệu.
-NẾU tài liệu bạn SỬ DỤNG ĐỂ TRẢ LỜI có chứa các thẻ hình ảnh (ví dụ: `![Hình ảnh minh hoạ](/static/...)` hoặc link Cloudinary), hãy trích dẫn nguyên vẹn thẻ hình ảnh đó vào câu trả lời để minh hoạ. TUYỆT ĐỐI KHÔNG chèn hình ảnh từ các đoạn tài liệu không liên quan đến câu trả lời.
-QUAN TRỌNG: Khi trả lời, KHÔNG sử dụng các cụm từ máy móc như "Theo Nguồn 1", "Dựa vào Nguồn 2". Thay vào đó, hãy diễn đạt tự nhiên như "Theo sách giáo khoa Sinh học 12...", hoặc nhắc tên bài học.
+    prompt = f"""BẠN LÀ TRỢ LÝ HỌC TẬP SINH HỌC 12. Bạn CHỈ được phép trả lời dựa trên TÀI LIỆU bên dưới.
 
-TÀI LIỆU:
+═══ QUY TẮC BẮT BUỘC ═══
+
+1. ĐỌC KỸ tài liệu trước. Xác định chính xác đoạn nào chứa câu trả lời.
+2. CHỈ SỬ DỤNG thông tin có trong tài liệu. Mỗi câu trong câu trả lời phải truy nguyên được về một đoạn cụ thể trong tài liệu.
+3. KHÔNG ĐƯỢC: bịa thêm ví dụ, thêm giải thích mở rộng, thêm kiến thức ngoài, thêm câu tổng kết/kết luận mà tài liệu không đề cập.
+4. Nếu tài liệu KHÔNG CHỨA câu trả lời → Nói: "Thông tin này không có trong tài liệu em đang tham khảo."
+5. Nếu tài liệu CHỈ CHỨA MỘT PHẦN câu trả lời → Trả lời phần có trong tài liệu, rồi nói rõ: "Các nội dung khác không được đề cập trong tài liệu này."
+6. Trả lời ĐÚNG trọng tâm câu hỏi, KHÔNG lan man sang chủ đề khác kể cả khi chúng liên quan.
+7. Diễn đạt tự nhiên, thân thiện. Dùng "Theo sách giáo khoa Sinh học 12..." thay vì "Theo Nguồn 1".
+
+═══ VÍ DỤ MẪU ═══
+
+Câu hỏi: "Đột biến gen là gì?"
+Tài liệu: "Đột biến gen là những biến đổi trong cấu trúc của gen, liên quan đến một hoặc một số cặp nucleotide."
+Trả lời đúng: "Theo sách giáo khoa Sinh học 12, đột biến gen là những biến đổi trong cấu trúc của gen, liên quan đến một hoặc một số cặp nucleotide."
+Trả lời SAI (bịa thêm): "Đột biến gen là những biến đổi trong cấu trúc của gen... Ví dụ như bệnh hồng cầu hình liềm là do đột biến thay thế cặp A-T bằng T-A..." ← SAI vì thông tin về bệnh hồng cầu hình liềm không có trong tài liệu được cung cấp.
+
+═══ TÀI LIỆU ═══
 {context_text}
-
-CÂU HỎI CỦA NGƯỜI DÙNG:
+═══ CÂU HỎI ═══
 {query}
 
-TRẢ LỜI:
+═══ TRẢ LỜI (chỉ dựa trên tài liệu ở trên) ═══
 """
     model = genai.GenerativeModel(
         model_name=config.GEMINI_CHAT_MODEL,
@@ -179,7 +340,7 @@ def chat_endpoint(request: ChatRequest, decoded_token: dict = Depends(verify_tok
 
     try:
         query_embedding = embed_query(request.query)
-        context_records = retrieve_context(query_embedding, top_k=3)
+        context_records = retrieve_context(query_embedding, top_k=3, query_text=request.query)
         answer = generate_answer(request.query, context_records)
         
         sources = [
@@ -220,6 +381,8 @@ def chat_endpoint(request: ChatRequest, decoded_token: dict = Depends(verify_tok
         return ChatResponse(answer=answer, sources=sources, session_id=session_id)
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/history")
@@ -282,8 +445,16 @@ class RoleRequest(BaseModel):
 @app.post("/admin/users/{uid}/role")
 def update_user_role(uid: str, request: RoleRequest, admin_token: dict = Depends(verify_admin_token)):
     try:
+        # --- LUẬT BẢO VỆ SUPER ADMIN ---
+        target_user = auth.get_user(uid)
+        target_claims = target_user.custom_claims or {}
+        if target_claims.get("role") == "super_admin" or target_user.email == "oabit666@gmail.com":
+            raise HTTPException(status_code=403, detail="Bạn không thể sửa quyền của Super Admin!")
+            
         auth.set_custom_user_claims(uid, {'admin': request.is_admin})
         return {"status": "success", "admin": request.is_admin}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -293,8 +464,17 @@ class StatusRequest(BaseModel):
 @app.post("/admin/users/{uid}/toggle-status")
 def toggle_user_status(uid: str, request: StatusRequest, admin_token: dict = Depends(verify_admin_token)):
     try:
+        # --- LUẬT BẢO VỆ SUPER ADMIN ---
+        if request.disabled: # Chỉ chặn nếu hành động là "Khóa"
+            target_user = auth.get_user(uid)
+            target_claims = target_user.custom_claims or {}
+            if target_claims.get("role") == "super_admin" or target_user.email == "oabit666@gmail.com":
+                raise HTTPException(status_code=403, detail="Bạn không thể khóa tài khoản của Super Admin!")
+                
         auth.update_user(uid, disabled=request.disabled)
         return {"status": "success", "disabled": request.disabled}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

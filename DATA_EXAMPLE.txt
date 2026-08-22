@@ -1,0 +1,80 @@
+Huong dan chuan bi du lieu
+==========================
+
+1. Thu muc du lieu mac dinh
+---------------------------
+Source code doc cau hinh tu src/config.py. Neu khong doi .env, du lieu nam trong cac thu muc sau:
+
+data/raw_data/
+data/processed_md/
+data/ocr/images/
+data/ocr/json/
+data/metadata/
+data/checkpoints/
+
+Thu muc data/ da bi .gitignore chan vi chua PDF SGK, ket qua OCR, checkpoint, file Excel danh gia va cac du lieu co the lon.
+
+2. File PDF dau vao
+-------------------
+Phase 1 doc PDF theo bien CURRENT_BOOK.
+Gia tri mac dinh:
+
+CURRENT_BOOK=sinh_hoc_12
+
+Voi cau hinh nay, file PDF can dat tai:
+
+data/raw_data/sinh_hoc_12.pdf
+
+Neu doi ten sach, vi du CURRENT_BOOK=my_book, thi file PDF can la:
+
+data/raw_data/my_book.pdf
+
+3. Ket qua du kien sau tung phase
+---------------------------------
+Phase 1 tao text OCR dang Markdown va JSON theo trang:
+
+data/processed_md/sinh_hoc_12.md
+data/ocr/json/sinh_hoc_12.pages.json
+data/checkpoints/sinh_hoc_12_phase1.json
+
+Phase 2 doc Markdown, cat chunk theo TOC, roi ghi vao MongoDB collection:
+
+markdown_chunks_v2
+
+Phase 3 doc chunks trong MongoDB, goi Gemini de trich xuat thuc the va quan he, roi ghi them metadata:
+
+metadata.phase3_status
+metadata.refined_at
+metadata.refinement_model
+extracted_entities
+
+Phase 4 dong bo MongoDB sang Neo4j:
+
+- node Sach
+- node BaiHocV2
+- node PhanDoanV2
+- node KhaiNiemV2
+- node CauTrucChucNang, CoChe, ThiNghiem, UngDung, YNghia neu co du lieu
+- relationship giua bai hoc, chunk, khai niem va cac thuc the lien quan
+
+Phase 5 tao embedding cho PhanDoanV2 va tao Vector Index:
+
+PhanDoanV2_embedding
+
+4. File danh gia Ragas
+----------------------
+Neu chay src/evaluate_rag.py, can co file test:
+
+data/Test_Dataset_Sinh12.csv
+
+File nay can co it nhat cac cot:
+
+question
+ground_truth
+
+Script se tao file ket qua trong data/, vi vay khong nen commit file ket qua raw len GitHub neu no lon hoac chua noi dung khong can public.
+
+5. Khong dua du lieu ban quyen len repo
+---------------------------------------
+PDF SGK scan va anh trich xuat tu SGK khong nen dua len GitHub cong khai neu khong co quyen phan phoi.
+Repo chi nen chua source code, file cau hinh mau va huong dan cach dat du lieu vao dung thu muc.
