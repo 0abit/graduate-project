@@ -53,6 +53,8 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 GEMINI_EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-2")
 GEMINI_CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-3-flash-preview")
 CHATBOT_TEMPERATURE = float(os.getenv("CHATBOT_TEMPERATURE", "0.1"))
+ENABLE_ANSWER_VERIFY = os.getenv("ENABLE_ANSWER_VERIFY", "true").lower() in {"1", "true", "yes", "y"}
+VERIFY_TEMPERATURE = float(os.getenv("VERIFY_TEMPERATURE", "0.0"))
 
 PHASE5_BATCH_SIZE = int(os.getenv("PHASE5_BATCH_SIZE", "3"))
 PHASE5_SLEEP_TIME = int(os.getenv("PHASE5_SLEEP_TIME", "180"))

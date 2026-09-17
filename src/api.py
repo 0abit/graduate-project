@@ -319,6 +319,130 @@ Trả lời SAI (bịa thêm): "Đột biến gen là những biến đổi tron
     response = model.generate_content(prompt)
     return response.text
 
+import json
+
+def verify_answer(query: str, context_records: List[dict], answer: str) -> dict:
+    """
+    Bước kiểm tra chất lượng câu trả lời (Post-Generation Verification).
+    Sử dụng Gemini Flash với vai trò Verifier để kiểm tra:
+    - Faithfulness: câu trả lời có bịa thêm nội dung ngoài tài liệu không?
+    - Relevancy: câu trả lời có đúng trọng tâm câu hỏi không?
+    
+    Returns dict: {"verdict": "PASS"/"FAIL", "is_faithful": bool, "is_relevant": bool, "issues": [...]}
+    """
+    if not config.ENABLE_ANSWER_VERIFY:
+        return {"verdict": "PASS", "is_faithful": True, "is_relevant": True, "issues": [], "skipped": True}
+    
+    if not answer or not context_records:
+        return {"verdict": "PASS", "is_faithful": True, "is_relevant": True, "issues": [], "skipped": True}
+    
+    # Chuẩn bị context text cho Verifier
+    context_text = ""
+    for idx, record in enumerate(context_records, 1):
+        context_text += f"--- Nguồn {idx} (Bài: {record['bai_hoc']}) ---\n"
+        context_text += f"{record['noi_dung']}\n\n"
+    
+    verify_prompt = f"""BẠN LÀ BỘ KIỂM TRA CHẤT LƯỢNG câu trả lời cho hệ thống hỏi đáp Sinh Học 12.
+
+═══ NHIỆM VỤ ═══
+Kiểm tra xem CÂU TRẢ LỜI bên dưới có vi phạm quy tắc nào không.
+
+═══ QUY TẮC KIỂM TRA ═══
+1. FAITHFULNESS: Mỗi câu khẳng định trong CÂU TRẢ LỜI phải có cơ sở trong TÀI LIỆU. Nếu câu trả lời chứa ví dụ, số liệu, hoặc giải thích KHÔNG có trong tài liệu → đánh dấu is_faithful = false.
+2. RELEVANCY: CÂU TRẢ LỜI phải đúng trọng tâm CÂU HỎI, không lan man sang chủ đề khác.
+3. Nếu câu trả lời là từ chối hợp lệ (ví dụ: "Thông tin này không có trong tài liệu...") → đó là PASS.
+4. Các cụm từ chuyển tiếp tự nhiên như "Theo sách giáo khoa Sinh học 12..." KHÔNG phải vi phạm.
+
+═══ TRẢ VỀ JSON (chỉ JSON, không thêm text) ═══
+{{
+  "is_faithful": true hoặc false,
+  "is_relevant": true hoặc false,
+  "issues": ["mô tả ngắn gọn từng vấn đề nếu có, mảng rỗng nếu không có"],
+  "verdict": "PASS" hoặc "FAIL"
+}}
+
+═══ TÀI LIỆU ═══
+{context_text}
+═══ CÂU HỎI ═══
+{query}
+
+═══ CÂU TRẢ LỜI CẦN KIỂM TRA ═══
+{answer}
+"""
+    
+    try:
+        model = genai.GenerativeModel(
+            model_name=config.GEMINI_CHAT_MODEL,
+            generation_config=genai.GenerationConfig(
+                temperature=config.VERIFY_TEMPERATURE,
+                response_mime_type="application/json"
+            )
+        )
+        response = model.generate_content(verify_prompt)
+        result = json.loads(response.text)
+        
+        # Đảm bảo các trường bắt buộc tồn tại
+        result.setdefault("is_faithful", True)
+        result.setdefault("is_relevant", True)
+        result.setdefault("issues", [])
+        result.setdefault("verdict", "PASS" if result["is_faithful"] and result["is_relevant"] else "FAIL")
+        
+        print(f"  [Verify] verdict={result['verdict']}, faithful={result['is_faithful']}, relevant={result['is_relevant']}, issues={result['issues']}")
+        return result
+        
+    except Exception as e:
+        # Fail-open: nếu verify lỗi thì vẫn trả kết quả cho user
+        print(f"  [Verify] Error: {e}. Skipping verification (fail-open).")
+        return {"verdict": "PASS", "is_faithful": True, "is_relevant": True, "issues": [], "error": str(e)}
+
+def regenerate_answer_strict(query: str, context_records: List[dict], issues: list) -> str:
+    """
+    Sinh lại câu trả lời với prompt nghiêm ngặt hơn khi verify phát hiện vấn đề.
+    Thêm cảnh báo cụ thể về các lỗi đã phát hiện.
+    """
+    if not context_records:
+        return "Xin lỗi, tôi không tìm thấy thông tin liên quan trong sách giáo khoa Sinh Học 12."
+    
+    context_text = ""
+    for idx, record in enumerate(context_records, 1):
+        context_text += f"--- Nguồn {idx} (Bài: {record['bai_hoc']}) ---\n"
+        context_text += f"{record['noi_dung']}\n\n"
+    
+    issues_text = "\n".join(f"- {issue}" for issue in issues) if issues else "Không xác định cụ thể."
+    
+    strict_prompt = f"""BẠN LÀ TRỢ LÝ HỌC TẬP SINH HỌC 12. Bạn CHỈ được phép trả lời dựa trên TÀI LIỆU bên dưới.
+
+⚠️ CẢNH BÁO: Câu trả lời trước đó đã bị phát hiện có vấn đề:
+{issues_text}
+
+═══ QUY TẮC BẮT BUỘC (NGHIÊM NGẶT) ═══
+
+1. ĐỌC KỸ tài liệu trước. Xác định chính xác đoạn nào chứa câu trả lời.
+2. CHỈ SỬ DỤNG thông tin có trong tài liệu. Mỗi câu trong câu trả lời phải truy nguyên được về một đoạn cụ thể.
+3. TUYỆT ĐỐI KHÔNG ĐƯỢC: bịa thêm ví dụ, thêm giải thích mở rộng, thêm kiến thức ngoài, thêm câu tổng kết/kết luận mà tài liệu không đề cập.
+4. Nếu tài liệu KHÔNG CHỨA câu trả lời → Nói: "Thông tin này không có trong tài liệu em đang tham khảo."
+5. Nếu tài liệu CHỈ CHỨA MỘT PHẦN câu trả lời → Trả lời phần có trong tài liệu, rồi nói rõ: "Các nội dung khác không được đề cập trong tài liệu này."
+6. Trả lời ĐÚNG trọng tâm câu hỏi, KHÔNG lan man.
+7. Diễn đạt tự nhiên, thân thiện. Dùng "Theo sách giáo khoa Sinh học 12..." thay vì "Theo Nguồn 1".
+
+═══ TÀI LIỆU ═══
+{context_text}
+═══ CÂU HỎI ═══
+{query}
+
+═══ TRẢ LỜI (chỉ dựa trên tài liệu, sửa các lỗi đã nêu) ═══
+"""
+    
+    model = genai.GenerativeModel(
+        model_name=config.GEMINI_CHAT_MODEL,
+        generation_config=genai.GenerationConfig(
+            temperature=0.0  # Deterministic cho lần retry
+        )
+    )
+    response = model.generate_content(strict_prompt)
+    return response.text
+
+
 @app.get("/")
 def serve_frontend():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
@@ -342,6 +466,16 @@ def chat_endpoint(request: ChatRequest, decoded_token: dict = Depends(verify_tok
         query_embedding = embed_query(request.query)
         context_records = retrieve_context(query_embedding, top_k=3, query_text=request.query)
         answer = generate_answer(request.query, context_records)
+        
+        # Bước kiểm tra chất lượng câu trả lời (Post-Generation Verification)
+        verification = verify_answer(request.query, context_records, answer)
+        
+        if verification.get("verdict") == "FAIL":
+            print(f"  [Verify] FAIL detected. Regenerating with stricter prompt...")
+            answer = regenerate_answer_strict(request.query, context_records, verification.get("issues", []))
+            # Verify lần 2 (không retry thêm nữa để tránh loop)
+            verification_retry = verify_answer(request.query, context_records, answer)
+            verification = verification_retry  # Cập nhật kết quả verify cuối cùng
         
         sources = [
             SourceDetail(
@@ -367,13 +501,14 @@ def chat_endpoint(request: ChatRequest, decoded_token: dict = Depends(verify_tok
                 "messages": []
             })
             
-        # Append messages
+        # Append messages (bao gồm verification metadata)
         chat_history_col.update_one(
             {"session_id": session_id, "user_id": user_id},
             {"$push": {"messages": {
                 "$each": [
                     {"role": "user", "content": request.query, "timestamp": datetime.datetime.utcnow()},
-                    {"role": "bot", "content": answer, "sources": [s.dict() for s in sources], "timestamp": datetime.datetime.utcnow()}
+                    {"role": "bot", "content": answer, "sources": [s.dict() for s in sources],
+                     "verification": verification, "timestamp": datetime.datetime.utcnow()}
                 ]
             }}}
         )
